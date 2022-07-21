@@ -1,0 +1,536 @@
+---
+title: "Extreme Value Theory"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r warning=FALSE,message=FALSE}
+library(rnoaa)
+library(leaflet)
+library(lawn)
+options(noaakey = "piRauSeecCMaIVkleStduqdxoaLLOPMs")
+lawn_bbox_polygon(c(113.338953078, -43.6345972634, 153.569469029, -10.6681857235)) %>% view
+# List stations corresponding to Australia
+all_stations<-ncdc_stations(extent = c(-43.6345972634, 113.338953078, -10.6681857235, 153.569469029))
+head(all_stations)
+```
+
+# Get Australian Rainfall data
+
+wrapper_get_meta_data function get all Australian station data from R package "rnoaa".
+
+```{r warning=FALSE,message=FALSE}
+wrapper_get_meta_data <- function(country_id = "AS", network_id = "N"){
+
+  ghcnd_meta_data = ghcnd_stations()
+  as_meta_data = dplyr::filter(ghcnd_meta_data,
+                               substr(id, 1, 2) == country_id & substr(id, 3, 3) == network_id)
+
+  return(as_meta_data)
+
+}
+```
+
+
+```{r warning=FALSE,message=FALSE}
+as_meta_data = wrapper_get_meta_data()
+save(as_meta_data, file = "Data/AS_meta_data.RData")
+head(as_meta_data)
+
+```
+Above meta_data contains following precipitation_elements.\\
+
+* PRCP is the daily precipitation (**tenths of a mm**)  
+* MDPR is a multiday accumulated total (tenths of a mm)  
+* DAPR is the number of days in a multiday total  
+* DWPR number of days of non-zero rainfall in a multiday total. 
+
+Hence, we filter the PRCP only for further analysis.
+
+```{r warning=FALSE,message=FALSE}
+# Filtering pricipitation data
+prcp_meta_data = dplyr::filter(as_meta_data, element == "PRCP")
+head(prcp_meta_data)
+
+```
+
+From this data set, distribution of stations are visualized through map visualization to get an idea of spreading of rain gauges in Australia.
+
+```{r warning=FALSE,message=FALSE}
+library(ggplot2)
+ggplot(prcp_meta_data, aes(x = longitude, y = latitude)) + geom_point(size = 0.2,col="blue")
+```
+
+I have selected eight sites to reflect the rainfall categories as follows:\\
+
+* Birdsville Police Station (38002) [Arid] 
+* Cambooya Post Office (41011) [Summer] 
+* Cape Naturaliste (9519) [Winter Dominant] 
+* Cataract Dam (68016) [Uniform] 
+* Eudunda (24511) [Winter] 
+* Gabo Island Lighthouse (84016) [Uniform] 
+* Oenpelli (14042) [Summer Dominant] 
+* Sorell (Whitlea) (94063) [Uniform]
+
+```{r warning=FALSE,message=FALSE}
+# function for obtaining precipitation data
+
+Australian_prcp_data <- function(stn_ids){
+  prcp_data <-meteo_pull_monitors(monitors=stn_ids)
+  prcp_data <- select(prcp_data,c('id','date','prcp'))
+  return(prcp_data)
+}
+
+```
+
+```{r warning=FALSE,message=FALSE}
+library(dplyr)
+station_id="ASN00038002"
+# Obtain the corresponding precipitation data
+prcp_data_38002 <- Australian_prcp_data(station_id)
+prcp_data_38002<-prcp_data_38002 %>% filter(date<="2022-06-04")
+#head(prcp_data_38002)
+station_id="ASN00041011"
+# Obtain the corresponding precipitation data
+prcp_data_41011 <- Australian_prcp_data(station_id)
+#head(prcp_data_41011)
+station_id="ASN00009519"
+# Obtain the corresponding precipitation data
+prcp_data_9519 <- Australian_prcp_data(station_id)
+prcp_data_9519<-prcp_data_9519 %>% filter(date<="2022-07-07")
+#head(prcp_data_9519)
+station_id="ASN00068016"
+# Obtain the corresponding precipitation data
+prcp_data_68016 <- Australian_prcp_data(station_id)
+#head(prcp_data_68016)
+station_id="ASN00024511"
+# Obtain the corresponding precipitation data
+prcp_data_24511 <- Australian_prcp_data(station_id)
+prcp_data_24511<-prcp_data_24511 %>% filter(date<="2022-07-07")
+#head(prcp_data_24511)
+station_id="ASN00084016"
+# Obtain the corresponding precipitation data
+prcp_data_84016 <- Australian_prcp_data(station_id)
+prcp_data_84016<-prcp_data_84016 %>% filter(date<="2022-07-07")
+#head(prcp_data_84016)
+station_id="ASN00014042"
+# Obtain the corresponding precipitation data
+prcp_data_14042 <- Australian_prcp_data(station_id)
+#head(prcp_data_14042)
+station_id="ASN00094063"
+# Obtain the corresponding precipitation data
+prcp_data_94063 <- Australian_prcp_data(station_id)
+#head(prcp_data_94063)
+
+```
+### Visualizing rainfall data
+
+```{r warning=FALSE,message=FALSE}
+a<-ggplot(prcp_data_38002, aes(x=date, y=prcp))+ geom_point(col="#1b9e77")+ggtitle("Gauge number:38002")+ theme(plot.title=element_text(hjust=0.5))
+
+b<-ggplot(prcp_data_41011, aes(x=date, y=prcp))+ geom_point(col="#1b9e77")+ggtitle("Gauge number:41011")+ theme(plot.title=element_text(hjust=0.5))
+
+c<-ggplot(prcp_data_9519, aes(x=date, y=prcp))+ geom_point(col="#1b9e77")+ggtitle("Gauge number:9519")+ theme(plot.title=element_text(hjust=0.5))
+
+d<-ggplot(prcp_data_68016, aes(x=date, y=prcp))+ geom_point(col="#1b9e77")+ggtitle("Gauge number:68016")+ theme(plot.title=element_text(hjust=0.5))
+
+e<-ggplot(prcp_data_24511, aes(x=date, y=prcp))+ geom_point(col="#1b9e77")+ggtitle("Gauge number:24511")+ theme(plot.title=element_text(hjust=0.5))
+
+f<-ggplot(prcp_data_84016, aes(x=date, y=prcp))+ geom_point(col="#1b9e77")+ggtitle("Gauge number:84016")+ theme(plot.title=element_text(hjust=0.5))
+
+g<-ggplot(prcp_data_14042, aes(x=date, y=prcp))+ geom_point(col="#1b9e77")+ggtitle("Gauge number:14042")+ theme(plot.title=element_text(hjust=0.5))
+
+h<-ggplot(prcp_data_94063, aes(x=date, y=prcp))+ geom_point(col="#1b9e77")+ggtitle("Gauge number:94063")+ theme(plot.title=element_text(hjust=0.5))
+
+library(patchwork)
+
+plts1<-(a|b)/(c|d)
+plts1
+plts2<-(e|f)/(g|h)
+plts2
+```
+
+# **Block Maxima Approach - Generalized Extreme Value Distribution (GEV)**
+
+```{r warning=FALSE,message=FALSE}
+Annual_maximum_rainfall<-function(data){
+ yr1= min(lubridate::year(data$date))
+ yr2= max(lubridate::year(data$date))
+ n=yr2-yr1+1
+ annmax_prcp <- matrix(data = NA,nrow=n,ncol = 1)
+ for (i in 1:n){
+   yr = (yr1-1)+i
+   index = which((lubridate::year(data$date)==yr))
+   yr_wise_rainfall<-data[index,3]
+   annmax_prcp[i,1] <- max(yr_wise_rainfall,na.rm = TRUE)
+   #annmax_prcp[i,2] <- yr
+ }
+ return(annmax_prcp)
+}
+
+```
+
+
+```{r warning=FALSE,message=FALSE}
+Max_prcp_data_38002<-Annual_maximum_rainfall(prcp_data_38002)
+Max_prcp_data_41011<-Annual_maximum_rainfall(prcp_data_41011)
+Max_prcp_data_9519<-Annual_maximum_rainfall(prcp_data_9519)
+Max_prcp_data_68016<-Annual_maximum_rainfall(prcp_data_68016)
+Max_prcp_data_24511<-Annual_maximum_rainfall(prcp_data_24511)
+Max_prcp_data_84016<-Annual_maximum_rainfall(prcp_data_84016)
+Max_prcp_data_14042<-Annual_maximum_rainfall(prcp_data_14042)
+Max_prcp_data_94063<-Annual_maximum_rainfall(prcp_data_94063)
+
+```
+
+#### Augmented Dickey-Fuller Test 
+
+* check whether maximum rainfall value series are stationary or not.
+
+H0: The time series is regarded as non-stationary.
+H1: The time series is regarded as stationary.
+
+```{r warning=FALSE,message=FALSE}
+library(tseries)
+adf.test(Max_prcp_data_38002[!is.infinite(rowSums(Max_prcp_data_38002)),])
+# 38002 max rainfall series is stationary by ADF test
+adf.test(Max_prcp_data_41011)
+# 41011 max rainfall series is not stationary
+adf.test(Max_prcp_data_9519[!is.infinite(rowSums(Max_prcp_data_9519)),])
+# 9519 max rainfall series is stationary by ADF test
+adf.test(Max_prcp_data_68016[!is.infinite(rowSums(Max_prcp_data_68016)),])
+# 68016 max rainfall series is not stationary by ADF test
+adf.test(Max_prcp_data_24511[!is.infinite(rowSums(Max_prcp_data_24511)),])
+# 24511 max rainfall series is stationary by ADF test
+adf.test(Max_prcp_data_84016[!is.infinite(rowSums(Max_prcp_data_84016)),])
+# 84016 max rainfall series is stationary by ADF test
+adf.test(Max_prcp_data_14042)
+# 14042 max rainfall series is stationary by ADF test
+adf.test(Max_prcp_data_94063[!is.infinite(rowSums(Max_prcp_data_94063)),])
+# 94063 max rainfall series is stationary by ADF test
+
+```
+
+#### Plotting maximum value rainfall
+
+```{r echo=FALSE, warning=FALSE,message=FALSE}
+# Obtaining yearly series required for plotting
+Yearly_Time<-function(data){
+ yr1= min(lubridate::year(data$date))
+ yr2= max(lubridate::year(data$date))
+ year = c(seq(yr1,yr2,1))
+ return(year)
+}
+```
+
+
+```{r echo=FALSE, warning=FALSE,message=FALSE}
+Year_data_38002<-Yearly_Time(prcp_data_38002)
+Year_data_41011<-Yearly_Time(prcp_data_41011)
+Year_data_9519<-Yearly_Time(prcp_data_9519)
+Year_data_68016<-Yearly_Time(prcp_data_68016)
+Year_data_24511<-Yearly_Time(prcp_data_24511)
+Year_data_84016<-Yearly_Time(prcp_data_84016)
+Year_data_14042<-Yearly_Time(prcp_data_14042)
+Year_data_94063<-Yearly_Time(prcp_data_94063)
+```
+
+```{r echo=FALSE, warning=FALSE,message=FALSE}
+df_max_rainfall__38002<-data.frame(Max_prcp_data_38002,Year_data_38002)
+df_max_rainfall__41011<-data.frame(Max_prcp_data_41011,Year_data_41011)
+df_max_rainfall__9519<-data.frame(Max_prcp_data_9519,Year_data_9519)
+df_max_rainfall__68016<-data.frame(Max_prcp_data_68016,Year_data_68016)
+df_max_rainfall__24511<-data.frame(Max_prcp_data_24511,Year_data_24511)
+df_max_rainfall__84016<-data.frame(Max_prcp_data_84016,Year_data_84016)
+df_max_rainfall__14042<-data.frame(Max_prcp_data_14042,Year_data_14042)
+df_max_rainfall__94063<-data.frame(Max_prcp_data_94063,Year_data_94063)
+```
+
+* Best fit lines are indicated by black lines.
+
+```{r echo=FALSE,warning=FALSE,message=FALSE}
+a1<-ggplot(df_max_rainfall__38002, aes(x=Year_data_38002, y=Max_prcp_data_38002))+ geom_line(col="#1b9e77")+ggtitle("Gauge number:38002")+ theme(plot.title=element_text(hjust=0.5))+
+geom_smooth(method=lm, se=FALSE,col="black",size=0.5)
+
+b1<-ggplot(df_max_rainfall__41011, aes(x=Year_data_41011, y=Max_prcp_data_41011))+ geom_line(col="#1b9e77")+ggtitle("Gauge number:41011")+ theme(plot.title=element_text(hjust=0.5))+
+geom_smooth(method=lm, se=FALSE,col="black",size=0.5)
+
+c1<-ggplot(df_max_rainfall__9519, aes(x=Year_data_9519, y=Max_prcp_data_9519))+ geom_line(col="#1b9e77")+ggtitle("Gauge number:9519")+ theme(plot.title=element_text(hjust=0.5))+
+geom_smooth(method=lm, se=FALSE,col="black",size=0.5)
+
+d1<-ggplot(df_max_rainfall__68016, aes(x=Year_data_68016, y=Max_prcp_data_68016))+ geom_line(col="#1b9e77")+ggtitle("Gauge number:68016")+ theme(plot.title=element_text(hjust=0.5))+
+geom_smooth(method=lm, se=FALSE,col="black",size=0.5)
+
+plts_max_1<-(a1|b1)/(c1|d1)
+plts_max_1
+
+```
+
+```{r echo=FALSE,warning=FALSE,message=FALSE}
+e1<-ggplot(df_max_rainfall__24511, aes(x=Year_data_24511, y=Max_prcp_data_24511))+ geom_line(col="#1b9e77")+ggtitle("Gauge number:24511")+ theme(plot.title=element_text(hjust=0.5))+
+geom_smooth(method=lm, se=FALSE,col="black",size=0.5)
+
+f1<-ggplot(df_max_rainfall__84016, aes(x=Year_data_84016, y=Max_prcp_data_84016))+ geom_line(col="#1b9e77")+ggtitle("Gauge number:84016")+ theme(plot.title=element_text(hjust=0.5))+
+geom_smooth(method=lm, se=FALSE,col="black",size=0.5)
+
+g1<-ggplot(df_max_rainfall__14042, aes(x=Year_data_14042, y=Max_prcp_data_14042))+ geom_line(col="#1b9e77")+ggtitle("Gauge number:14042")+ theme(plot.title=element_text(hjust=0.5))+
+geom_smooth(method=lm, se=FALSE,col="black",size=0.5)
+
+h1<-ggplot(df_max_rainfall__94063, aes(x=Year_data_94063, y=Max_prcp_data_94063))+ geom_line(col="#1b9e77")+ggtitle("Gauge number:94063")+ theme(plot.title=element_text(hjust=0.5))+
+geom_smooth(method=lm, se=FALSE,col="black",size=0.5)
+
+plts_max_2<-(e1|f1)/(g1|h1)
+plts_max_2
+
+```
+
+##### Block Maxima is usually modelled using the distribution from Generalized Extreme Value Families such as Gumbell, Weibull, and Frechet.
+* CDFs are as follows:
+
+$$F(x)=exp[\ -(1-\xi \dfrac{x-\mu}{\sigma}) ]\; \hspace{0.5in} \xi \neq 0 $$
+
+$$F(x)=exp[\ -exp(- \dfrac{x-\mu}{\sigma})]\ ; \hspace{0.5in} \xi =0$$
+
+* location parameter - $\mu ; \hspace{0.1in} - \infty < \mu < \infty$
+
+* scale parameter - $\sigma ; \hspace{0.1in} 0 < \sigma < \infty$ 
+
+* shape parameter - $\xi \hspace{0.1in} - \infty < \xi < \infty$ 
+
+* Gumbell distribution - $\xi=0$, Frechet distribution- $\xi >0$ , Weibull distribution - $\xi < 0$
+
+$$Return \hspace{0.1in}Period=\dfrac{1}{P(Exceedance)}=\dfrac{1}{P(Z>z)}=\dfrac{1}{1-F(z)}$$
+The significance of the best non-stationary model, when compared to the stationary model, can be measured from the p-value of the Chi-square distribution.
+
+* negative log-likelihood of stationary model -nlls
+
+* best non-stationary model -nllns
+
+* 2[nlls − nllns] ∼ χ2(df)
+
+##### Case 1
+$$X_{t} \sim GEV(\mu, \sigma, \xi)$$
+```{r warning=FALSE,message=FALSE}
+library(ismev)
+df<-Max_prcp_data_38002
+df <- df[!is.infinite(rowSums(df)),]
+A = gev.fit(df,ydat = NULL)
+gev.diag(A)
+```
+
+##### Case 2
+$$X_{t} \sim GEV(\mu(t), \sigma, \xi)$$
+$$\mu(t)=\beta_{0}+\beta_{1}t$$
+
+```{r warning=FALSE,message=FALSE}
+library(ismev)
+df<-df_max_rainfall__38002
+time<-c(seq(1,length(df$Max_prcp_data_38002),1))
+df<-cbind(df,time)
+df <- df[!is.infinite(rowSums(df)),]
+df1 <- as.matrix(df[,1])
+df2 <- as.matrix(df[,2])
+A = gev.fit(df1,ydat = df2,mul = 1)
+gev.diag(A)
+```
+
+#### Significance of stationary and non-stationary GEV distribution model.
+
+* $D= 2[nlls − nllns]=2[-801.2452-(-799.3186)]=-3.8532$
+
+* Chi-squre test value at 5% significance level
+
+```{r warning=FALSE,message=FALSE}
+# Upper tail critical value
+qchisq(p=0.975, df=1, lower.tail=TRUE)
+```
+
+D value is not larger than Chi square value. Hence, non-stationary model does not explain more variability in data than stationary model. 
+
+##### Case 3
+$$X_{t} \sim GEV(\mu, \sigma(t), \xi)$$
+$$\sigma(t)=exp[\beta_{0}+\beta_{1}t]$$
+
+
+```{r warning=FALSE,message=FALSE}
+library(ismev)
+df<-df_max_rainfall__38002
+time<-c(seq(1,length(df$Max_prcp_data_38002),1))
+df<-cbind(df,time)
+df <- df[!is.infinite(rowSums(df)),]
+df1 <- as.matrix(df[,1])
+df2 <- as.matrix(df[,2])
+A = gev.fit(df1,ydat = df2,sigl = 1, siglink = exp)
+gev.diag(A)
+```
+
+##### Case 4
+$$X_{t} \sim GEV(\mu, \sigma(t), \xi)$$
+$$\mu(t)=\beta_{0}+\beta_{1}t$$
+$$\sigma(t)=exp[\beta_{0}+\beta_{1}t]$$
+
+
+```{r warning=FALSE,message=FALSE}
+library(ismev)
+df<-df_max_rainfall__38002
+time<-c(seq(1,length(df$Max_prcp_data_38002),1))
+df<-cbind(df,time)
+df <- df[!is.infinite(rowSums(df)),]
+df1 <- as.matrix(df[,1])
+df2 <- as.matrix(df[,2])
+A = gev.fit(df1,ydat = df2,mul=1, sigl = 1, siglink = exp)
+gev.diag(A)
+```
+
+#### Gauge Number: 9519
+
+##### Case 1
+
+```{r warning=FALSE,message=FALSE}
+df<-Max_prcp_data_9519
+df <- df[!is.infinite(rowSums(df)),]
+A = gev.fit(df,ydat = NULL)
+gev.diag(A)
+
+```
+
+##### Case 2
+
+```{r warning=FALSE,message=FALSE}
+df<-df_max_rainfall__9519
+time<-c(seq(1,length(df$Max_prcp_data_9519),1))
+df<-cbind(df,time)
+df <- df[!is.infinite(rowSums(df)),]
+df1 <- as.matrix(df[,1])
+df2 <- as.matrix(df[,2])
+A = gev.fit(df1,ydat = df2,mul = 1)
+gev.diag(A)
+```
+
+##### Case 3
+
+
+```{r warning=FALSE,message=FALSE}
+library(ismev)
+df<-df_max_rainfall__9519
+time<-c(seq(1,length(df$Max_prcp_data_9519),1))
+df<-cbind(df,time)
+df <- df[!is.infinite(rowSums(df)),]
+df1 <- as.matrix(df[,1])
+df2 <- as.matrix(df[,2])
+A = gev.fit(df1,ydat = df2,sigl = 1, siglink = exp)
+gev.diag(A)
+```
+
+##### Case 4
+
+
+```{r warning=FALSE,message=FALSE}
+df<-df_max_rainfall__9519
+time<-c(seq(1,length(df$Max_prcp_data_9519),1))
+df<-cbind(df,time)
+df <- df[!is.infinite(rowSums(df)),]
+df1 <- as.matrix(df[,1])
+df2 <- as.matrix(df[,2])
+A = gev.fit(df1,ydat = df2,mul=1, sigl = 1, siglink = exp)
+gev.diag(A)
+```
+
+# **Peaks Over Threshold (POT) Approach - Generalized Pareto distribution (GPD)**
+
+* Threshold value is decided based on 95th quantile
+
+```{r warning=FALSE,message=FALSE}
+# Quantile value finding
+prcp_rank_data_38002<-sort(prcp_data_38002$prcp)
+threshold_38002<-quantile(prcp_rank_data_38002, probs = 0.95)
+threshold_38002
+```
+
+#### Other ways to select threshold
+
+* A mean residual life plot
+
+* **Select the smallest threshold above which the mean excess plot is roughly linear.**
+
+```{r warning=FALSE,message=FALSE}
+data <- prcp_data_38002$prcp
+data<- na.omit(data)
+mrl.plot(data,umax = 100)
+```
+
+* **selecting the threshold is based on GPD parameters which are constant with U>Uo, where Uo is the threshold value.**
+
+```{r warning=FALSE,message=FALSE}
+data <- prcp_data_38002$prcp
+data<- na.omit(data)
+gpd.fitrange(data,0 , 20 , nint=100)
+
+```
+
+
+Therefore, rainfall values greater than "threshold_38002" is used to select extreme rainfall data.
+
+```{r warning=FALSE,message=FALSE}
+Extreme_rainfall_38002<-prcp_data_38002 %>% filter(prcp > threshold_38002)
+```
+
+```{r warning=FALSE,message=FALSE}
+ggplot(Extreme_rainfall_38002, aes(x=date, y=prcp))+ geom_line(col="#1b9e77")+ggtitle("Gauge number:38002-Extreme rainfall by PoT method")+ theme(plot.title=element_text(hjust=0.5))
+```
+
+Generalized Pareto Distribution modeling
+
+##### Case 1
+$$X_{t} \sim GPD(\sigma, \xi)$$
+
+```{r warning=FALSE,message=FALSE}
+df<-prcp_data_38002
+df<-df[,c(2,3)]
+df$date<-lubridate::year(df$date)
+df <- na.omit(df)
+B = gpd.fit(df$prcp,threshold = 8)
+gpd.diag(B)
+
+```
+
+
+##### Case 2
+$$X_{t} \sim GPD(\sigma(t), \xi)$$
+$$\sigma(t)=exp[\beta_{0}+\beta_{1}t]$$
+
+
+```{r warning=FALSE,message=FALSE}
+df<-prcp_data_38002
+df<-df[,c(2,3)]
+df$date<-lubridate::year(df$date)
+df <- na.omit(df)
+df1<- as.matrix(df$date)
+B = gpd.fit(df$prcp,threshold = 8,ydat = df1,sigl = 1, siglink = exp)
+gpd.diag(B)
+
+```
+
+##### Case 3
+
+$$X_{t} \sim GPD(\sigma(t), \xi (t))$$
+
+$$\sigma(t)=exp[\beta_{0}+\beta_{1}t]$$
+
+$$\xi(t)=\beta_{0}+\beta_{1}t$$
+
+
+```{r warning=FALSE,message=FALSE}
+df<-prcp_data_38002
+df<-df[,c(2,3)]
+df$date<-lubridate::year(df$date)
+df <- na.omit(df)
+df1<- as.matrix(df$date)
+B = gpd.fit(df$prcp,threshold = 8,ydat = df1,sigl = 1, siglink = exp, shl = 1)
+gpd.diag(B)
+
+```
+
